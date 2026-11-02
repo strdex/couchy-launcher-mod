@@ -130,8 +130,17 @@ No ads, analytics, accounts or background services. The only network use is opti
 
 ## Changelog
 
-<details>
+<details open>
 <summary>Click to expand</summary>
+
+**v1.1.0**
+- **App PIN Lock**: Added PIN lock protection for selected applications.
+- **Bing Wallpapers**: Added Bing Daily Wallpaper option for dynamic, high-quality backgrounds.
+- **Weather Display**: Added live weather forecast widget located in the top-left corner of the screen.
+- **Wisdom Share / Dijitsu TV Mod**:
+  - Full compatibility with Dijitsu, Onvo, and Wisdom Share / CVTE / Amlogic TV boards.
+  - Enhanced HomeOverrideService with active detection for factory launchers (com.cvte.*, com.clover.*, com.softwinner.*, etc.).
+  - Included **CouchyBridge** companion module to intercept hardware Home button signals and redirect seamlessly to CouchyLauncher.
 
 **v1.0.6**
 - Smoother cold start (limitedParallelism scan, 2-frame boot fade)
