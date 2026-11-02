@@ -103,11 +103,7 @@ fun AppCard(
             focusedContentColor = Color.White,
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.10f),
-        glow = ClickableSurfaceDefaults.glow(
-            // Softer + tighter than before: reads at 3m, cheap to render on weak
-            // TV GPUs, and no longer competes with the accent ring.
-            focusedGlow = Glow(elevationColor = Color.Black.copy(alpha = 0.5f), elevation = 8.dp)
-        ),
+        glow = ClickableSurfaceDefaults.glow(focusedGlow = Glow(Color.Transparent, 0.dp)),
         border = ClickableSurfaceDefaults.border(
             // Thin accent ring on focus (thicker while dragging in move mode).
             focusedBorder = Border(

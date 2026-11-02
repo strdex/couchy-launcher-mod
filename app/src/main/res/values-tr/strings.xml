@@ -179,4 +179,6 @@
     <string name="cd_move_down">Aşağı taşı</string>
     <string name="cd_delete_section">Bölümü sil</string>
     <string name="about_source">Kaynak kodu</string>
+    <string name="cat_favorites">Favoriler</string>
+    <string name="accessibility_service_desc">Kumandadaki Home tuşuna basıldığında Couchy TV açılmasını sağlar.</string>
 </resources>

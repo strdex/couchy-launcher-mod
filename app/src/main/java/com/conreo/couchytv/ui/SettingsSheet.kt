@@ -123,7 +123,7 @@ fun SettingsSheet(
                 }
                 store.update {
                     it.copy(
-                        useCustomWallpaper = true,
+                        useCustomWallpaper = true, useCityWallpaper = false, useBingWallpaper = false,
                         useVideoWallpaper = false,
                         useBuiltinAerials = false,
                     )
@@ -149,7 +149,7 @@ fun SettingsSheet(
                     it.copy(
                         videoUri = uri.toString(),
                         useVideoWallpaper = true,
-                        useCustomWallpaper = false,
+                        useCustomWallpaper = false, useCityWallpaper = false, useBingWallpaper = false,
                         useBuiltinAerials = false,
                     )
                 }
@@ -213,13 +213,38 @@ fun SettingsSheet(
                     )
                     SettingsScreen.Wallpaper -> WallpaperScreen(
                         config = config,
+                        onSelectBing = {
+                            scope.launch {
+                                store.update {
+                                    it.copy(
+                                        useBingWallpaper = true,
+                                        useCityWallpaper = false,
+                                        useCustomWallpaper = false,
+                                        useVideoWallpaper = false,
+                                        useBuiltinAerials = false,
+                                    )
+                                }
+                            }
+                        },
+                        onSelectCity = {
+                            scope.launch {
+                                store.update {
+                                    it.copy(
+                                        useCityWallpaper = true, useBingWallpaper = false,
+                                        useCustomWallpaper = false,
+                                        useVideoWallpaper = false,
+                                        useBuiltinAerials = false,
+                                    )
+                                }
+                            }
+                        },
                         onSelectBuiltinAerials = {
                             scope.launch {
                                 store.update {
                                     it.copy(
                                         useBuiltinAerials = true,
                                         useVideoWallpaper = false,
-                                        useCustomWallpaper = false,
+                                        useCustomWallpaper = false, useCityWallpaper = false, useBingWallpaper = false,
                                     )
                                 }
                             }
@@ -238,7 +263,7 @@ fun SettingsSheet(
                                 store.update {
                                     it.copy(
                                         wallpaper = i,
-                                        useCustomWallpaper = false,
+                                        useCustomWallpaper = false, useCityWallpaper = false, useBingWallpaper = false,
                                         useVideoWallpaper = false,
                                         useBuiltinAerials = false,
                                     )
@@ -418,9 +443,15 @@ private fun AboutScreen(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = "v" + (runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrDefault("?")),
+                    text = "v" + (runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrDefault("1.1.0")),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "strdex87 @ add to pin parent control",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
         }
@@ -498,36 +529,13 @@ private fun DisplayScreen(
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 12.dp, start = 8.dp),
         )
-        SectionLabel(stringResource(R.string.section_layout))
         val f = initialFocus()
-        SelectorRow(
-            modifier = Modifier.focusRequester(f),
-            label = stringResource(R.string.view_mode),
-            value = listOf(stringResource(R.string.mode_carousel), stringResource(R.string.mode_grid), stringResource(R.string.mode_dock))[config.layout.coerceIn(0, 2)],
-            description = when (config.layout) {
-                LAYOUT_GRID -> stringResource(R.string.mode_grid_desc)
-                LAYOUT_DOCK -> stringResource(R.string.mode_dock_desc)
-                else -> stringResource(R.string.mode_carousel_desc)
-            },
-            steps = 3,
-            current = config.layout.coerceIn(0, 2),
-            onSelect = { v -> update { it.copy(layout = v) } },
-        )
-        // Section names are only drawn in carousel/grid — hide the toggle in dock.
-        if (config.layout != LAYOUT_DOCK) {
-            SectionLabel(stringResource(R.string.section_elements))
-            SettingsItem(
-                selected = false,
-                onClick = { update { it.copy(showCategoryNames = !it.showCategoryNames) } },
-                headlineContent = { Text(stringResource(R.string.section_names_label)) },
-                trailingContent = { CheckMark(checked = config.showCategoryNames) },
-            )
-        }
         SectionLabel(stringResource(R.string.section_size))
         run {
             val labels = listOf(stringResource(R.string.scale_auto), "75%", "90%", "100%", "115%", "130%")
             val idx = config.uiScale.coerceIn(0, labels.size - 1)
             SelectorRow(
+                modifier = Modifier.focusRequester(f),
                 label = stringResource(R.string.ui_scale),
                 value = labels[idx],
                 description = if (idx == 0) stringResource(R.string.ui_scale_auto_sub) else null,
@@ -846,6 +854,26 @@ private fun LauncherSettingsSubscreen(
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 12.dp, start = 8.dp),
         )
+        val isServiceActive = remember { com.conreo.couchytv.HomeOverrideService.isServiceRunning(context) }
+        SettingsItem(
+            selected = false,
+            onClick = {
+                runCatching {
+                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                }.onFailure {
+                    Actions.toast(context, "Erişilebilirlik ayarları açılamadı")
+                }
+            },
+            headlineContent = { Text("Home Tuşunu Couchy'ye Ata") },
+            supportingContent = {
+                Text(
+                    if (isServiceActive) "Etkin (Home tuşu Couchy TV'yi açar)"
+                    else "Erişilebilirlik ayarından Couchy TV'yi açmak için tıklayın"
+                )
+            },
+            leadingContent = { Icon(AppIcons.Bolt, contentDescription = null) },
+            trailingContent = { CheckMark(checked = isServiceActive) },
+        )
         SettingsItem(
             selected = false,
             onClick = { langScreen = true },
@@ -928,6 +956,7 @@ private fun StatusBarScreen(
 ) {
     val scope = rememberCoroutineScope()
     var pickVpn by remember { mutableStateOf(false) }
+    var pickCity by remember { mutableStateOf(false) }
     val vpnLabel = apps.firstOrNull { it.pkg == config.vpnApp }?.label ?: stringResource(R.string.vpn_system)
 
     Column(
@@ -954,6 +983,12 @@ private fun StatusBarScreen(
             headlineContent = { Text(stringResource(R.string.statusbar_glass)) },
             supportingContent = { Text(stringResource(R.string.statusbar_glass_sub)) },
             trailingContent = { CheckMark(checked = config.statusBarGlass) },
+        )
+        SettingsItem(
+            selected = false,
+            onClick = { pickCity = true },
+            headlineContent = { Text("Hava durumu") },
+            supportingContent = { Text(config.weatherCity.ifEmpty { stringResource(R.string.off) }) },
         )
         SettingsItem(
             selected = false,
@@ -989,6 +1024,21 @@ private fun StatusBarScreen(
             headlineContent = { Text(stringResource(R.string.vpn_opens)) },
             supportingContent = { Text(vpnLabel) },
             leadingContent = { Icon(AppIcons.Vpn, contentDescription = null) },
+        )
+    }
+
+    if (pickCity) {
+        WeatherCityDialog(
+            onDismiss = { pickCity = false },
+            onPick = { p ->
+                pickCity = false
+                scope.launch {
+                    store.update {
+                        if (p == null) it.copy(weatherCity = "")
+                        else it.copy(weatherCity = p.label.substringBefore(","), weatherLat = p.lat, weatherLon = p.lon)
+                    }
+                }
+            },
         )
     }
 
@@ -1242,6 +1292,8 @@ private fun RenameDialog(
 @Composable
 private fun WallpaperScreen(
     config: LauncherConfig,
+    onSelectBing: () -> Unit,
+    onSelectCity: () -> Unit,
     onSelectBuiltinAerials: () -> Unit,
     onSelectBuiltinSource: (Int) -> Unit,
     onSetScrim: (Int) -> Unit,
@@ -1261,7 +1313,7 @@ private fun WallpaperScreen(
         )
         val f = initialFocus()
         val staticActive = !config.useBuiltinAerials &&
-            !config.useVideoWallpaper && !config.useCustomWallpaper
+            !config.useVideoWallpaper && !config.useCustomWallpaper && !config.useCityWallpaper && !config.useBingWallpaper
 
         // Dimming — how much the wallpaper is darkened for icon readability.
         // Applies to any background; "Top & bottom" keeps the centre clear.
@@ -1320,6 +1372,31 @@ private fun WallpaperScreen(
             supportingContent = { Text(stringResource(R.string.pick_photo_sub)) },
             leadingContent = { Icon(AppIcons.Image, contentDescription = null) },
             trailingContent = { CheckMark(checked = config.useCustomWallpaper) },
+        )
+
+        // Bing Daily Wallpaper
+        SettingsItem(
+            selected = false,
+            onClick = onSelectBing,
+            headlineContent = { Text("Bing'den al (Günün Duvar Kağıdı)") },
+            supportingContent = { Text("Microsoft Bing'den her gün yüksek kaliteli manzara fotoğrafları") },
+            leadingContent = { Icon(AppIcons.Image, contentDescription = null) },
+            trailingContent = { CheckMark(checked = config.useBingWallpaper) },
+        )
+        // Photos of the weather city (Unsplash), refreshed daily
+        SettingsItem(
+            selected = false,
+            enabled = config.weatherCity.isNotEmpty(),
+            onClick = onSelectCity,
+            headlineContent = { Text("Şehir fotoğrafları (Unsplash)") },
+            supportingContent = {
+                Text(
+                    if (config.weatherCity.isEmpty()) "Önce Durum çubuğu → Hava durumu'ndan şehir seçin"
+                    else "${config.weatherCity} · Unsplash API üzerinden günde 1 kez çekilir"
+                )
+            },
+            leadingContent = { Icon(AppIcons.Image, contentDescription = null) },
+            trailingContent = { CheckMark(checked = config.useCityWallpaper) },
         )
 
         /* ---------------- VIDEO: built-in aerials + your own video ---------------- */

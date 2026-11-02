@@ -1,12 +1,18 @@
-<a id="english"></a>
+﻿<a id="english"></a>
 
 <div align="center">
 
 <img src="art/couchy-launcher.svg" width="120" alt="Couchy Launcher logo" />
 
-# Couchy Launcher
+# Couchy Launcher (Mod & Wisdom Share / Dijitsu TV Fix)
 
-**A fast, private, one-screen home launcher for Android TV & Google TV.**
+**A fast, private, one-screen home launcher for Android TV, Google TV & Wisdom Share / AOSP TV boards.**
+
+> 🚀 **Dijitsu / Onvo / Wisdom Share Kullanıcıları:**
+> Kumandadaki Home tuşunun eski fabrika arayüzünü açması sorununu çözen **CouchyBridge** modülü ve hızlandırma rehberi için:
+> 👉 [**Wisdom Share & Dijitsu Kurulum ve Hızlandırma Rehberi (WISDOM_SHARE_DIJITSU_REHBERI.md)**](WISDOM_SHARE_DIJITSU_REHBERI.md)
+>
+> Hazır derlenmiş APK'lar: [eleases/](releases/) dizinindedir.
 
 ![License](https://img.shields.io/badge/license-GPLv3-blue)
 ![Platform](https://img.shields.io/badge/Android%20TV%20·%20Google%20TV-3DDC84?logo=android&logoColor=white)

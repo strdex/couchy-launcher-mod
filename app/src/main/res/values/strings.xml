@@ -196,4 +196,6 @@
     <string name="cd_move_up">Move up</string>
     <string name="cd_move_down">Move down</string>
     <string name="cd_delete_section">Delete section</string>
+    <string name="cat_favorites">Favorites</string>
+    <string name="accessibility_service_desc">Allows Couchy TV to open when pressing the Home button.</string>
 </resources>

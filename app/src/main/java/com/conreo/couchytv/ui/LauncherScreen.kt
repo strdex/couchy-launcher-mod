@@ -218,9 +218,12 @@ fun LauncherApp(rescanTick: Int) {
     val appsOrNull by produceState(initialValue = AppRepository.memoryCache, rescanTick) {
         value = withContext(Dispatchers.Default) { AppRepository.scan(context.applicationContext) }
     }
-    val config = configOrNull ?: run {
+    val rawConfig = configOrNull ?: run {
         LoadingScreen()
         return
+    }
+    val config = remember(rawConfig) {
+        if (rawConfig.layout != LAYOUT_DOCK) rawConfig.copy(layout = LAYOUT_DOCK) else rawConfig
     }
 
     val uiScale = uiScaleFactor(
@@ -301,6 +304,13 @@ fun LauncherApp(rescanTick: Int) {
     val locale = androidx.core.os.ConfigurationCompat
         .getLocales(androidx.compose.ui.platform.LocalConfiguration.current)
         .get(0) ?: Locale.getDefault()
+    val weather by produceState<com.conreo.couchytv.data.Weather.Now?>(initialValue = null, config.weatherCity, config.weatherLat, config.weatherLon, resumeTick) {
+        if (config.weatherCity.isEmpty()) { value = null; return@produceState }
+        while (true) {
+            com.conreo.couchytv.data.Weather.current(config.weatherLat, config.weatherLon)?.let { value = it }
+            delay(30 * 60 * 1000L)
+        }
+    }
     val time by produceState(initialValue = "", config.h24, locale, resumeTick) {
         val fmt = SimpleDateFormat(if (config.h24) "HH:mm" else "h:mm a", locale)
         while (true) {
@@ -329,7 +339,7 @@ fun LauncherApp(rescanTick: Int) {
                 val added = current - cfg.knownApps
                 if (added.isEmpty() && current == cfg.knownApps) cfg
                 else {
-                    val first = cfg.categories.first().id
+                    val first = cfg.categories.last().id
                     cfg.copy(
                         knownApps = current,
                         sections = cfg.sections + added.associateWith { setOf(first) },
@@ -341,6 +351,15 @@ fun LauncherApp(rescanTick: Int) {
 
     var menuFor by remember { mutableStateOf<AppEntry?>(null) }
     var movePkg by remember { mutableStateOf<String?>(null) }
+    // PIN lock: pending action waiting for the correct PIN
+    var pinPrompt by remember { mutableStateOf<Pair<String, (String) -> Boolean>?>(null) }
+    val requestLaunch: (String) -> Unit = { pkg ->
+        if (pkg in config.locked && config.pinHash.isNotEmpty()) {
+            pinPrompt = "PIN girin" to { pin ->
+                (hashPin(pin) == config.pinHash).also { ok -> if (ok) Actions.launchApp(context, pkg) }
+            }
+        } else Actions.launchApp(context, pkg)
+    }
     var showSettings by remember { mutableStateOf(false) }
     var wallpaperVersion by remember { mutableIntStateOf(0) }
 
@@ -507,8 +526,48 @@ fun LauncherApp(rescanTick: Int) {
     // blurred, and crossfading it in costs one texture blend per frame
     // instead of a full-screen RenderEffect blur (heavy on TV GPUs). -----
     val wallpaperPair by produceState<Pair<ImageBitmap?, ImageBitmap?>>(
-        initialValue = null to null, config.useCustomWallpaper, wallpaperVersion
+        initialValue = null to null, config.useCustomWallpaper, config.useCityWallpaper, config.useBingWallpaper,
+        config.weatherCity, wallpaperVersion
     ) {
+                if (config.useBingWallpaper) {
+            var last: File? = null
+            while (true) {
+                withContext(Dispatchers.IO) {
+                    com.conreo.couchytv.data.BingWallpapers.pick(context.applicationContext, last)
+                        ?.let { f ->
+                            last = f
+                            runCatching {
+                                val sharp = decodeDownsampled(f, maxWidth = 1280)
+                                    ?.also { it.prepareToDraw() }?.asImageBitmap()
+                                val blurred = decodeDownsampled(f, maxWidth = 96)
+                                    ?.also { it.prepareToDraw() }?.asImageBitmap()
+                                sharp to blurred
+                            }.getOrNull()
+                        }
+                }?.let { if (it.first != null) value = it }
+                delay(15 * 60_000L)
+            }
+        }
+        if (config.useCityWallpaper && config.weatherCity.isNotEmpty()) {
+            // City photos: fetched at most once a day, a different one every 15 min.
+            var last: File? = null
+            while (true) {
+                withContext(Dispatchers.IO) {
+                    com.conreo.couchytv.data.CityWallpapers.pick(context.applicationContext, config.weatherCity, config.unsplashApiKey, last)
+                        ?.let { f ->
+                            last = f
+                            runCatching {
+                                val sharp = decodeDownsampled(f, maxWidth = 1280)
+                                    ?.also { it.prepareToDraw() }?.asImageBitmap()
+                                val blurred = decodeDownsampled(f, maxWidth = 96)
+                                    ?.also { it.prepareToDraw() }?.asImageBitmap()
+                                sharp to blurred
+                            }.getOrNull()
+                        }
+                }?.let { if (it.first != null) value = it }
+                delay(15 * 60_000L)
+            }
+        }
         value = if (!config.useCustomWallpaper) null to null
         else withContext(Dispatchers.IO) {
             val f = File(context.filesDir, "wallpaper.jpg")
@@ -671,8 +730,8 @@ fun LauncherApp(rescanTick: Int) {
             // Launch entrance: after the boot logo, wait a beat, then the glass
             // panels slide in (status bar from the top, dock from the bottom) and
             // the icons fade in after.
-            var introShown by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) { delay(450); introShown = true }
+            val introShown = true // entrance animations disabled
+
             val introTop by animateFloatAsState(
                 targetValue = if (introShown) 1f else 0f,
                 animationSpec = tween(340, easing = FastOutSlowInEasing),
@@ -707,6 +766,8 @@ fun LauncherApp(rescanTick: Int) {
                         net = net,
                         time = time,
                         date = date,
+                        weather = weather,
+                        cityName = config.weatherCity,
                         showVpn = config.showVpnButton,
                         glass = config.statusBarGlass,
                         onVpnClick = {
@@ -730,7 +791,7 @@ fun LauncherApp(rescanTick: Int) {
                         intro = introShown,
                         expanded = dockExpanded,
                         onExpandChange = { dockExpanded = it },
-                        onLaunch = { app -> if (movePkg == null) Actions.launchApp(context, app.pkg) },
+                        onLaunch = { app -> if (movePkg == null) requestLaunch(app.pkg) },
                         onMenu = { app -> if (movePkg == null) menuFor = app },
                     )
                     else -> {
@@ -834,14 +895,14 @@ fun LauncherApp(rescanTick: Int) {
                                     GridSection(
                                         catApps, config, accent, movePkg, moveFocus,
                                         cardWidth, gap, introShown,
-                                        onLaunch = { app -> if (movePkg == null) Actions.launchApp(context, app.pkg) },
+                                        onLaunch = { app -> if (movePkg == null) requestLaunch(app.pkg) },
                                         onMenu = { app -> if (movePkg == null) menuFor = app },
                                     )
                                 } else {
                                     CarouselSection(
                                         catApps, config, accent, movePkg, moveFocus,
                                         cardWidth, gap,
-                                        onLaunch = { app -> if (movePkg == null) Actions.launchApp(context, app.pkg) },
+                                        onLaunch = { app -> if (movePkg == null) requestLaunch(app.pkg) },
                                         onMenu = { app -> if (movePkg == null) menuFor = app },
                                     )
                                 }
@@ -859,7 +920,7 @@ fun LauncherApp(rescanTick: Int) {
                     app = app,
                     isHidden = app.pkg in config.hidden,
                     onDismiss = { menuFor = null },
-                    onOpen = { menuFor = null; Actions.launchApp(context, app.pkg) },
+                    onOpen = { menuFor = null; requestLaunch(app.pkg) },
                     onMove = { menuFor = null; movePkg = app.pkg },
                     onToggleHide = {
                         menuFor = null
@@ -872,9 +933,40 @@ fun LauncherApp(rescanTick: Int) {
                             }
                         }
                     },
+                    isLocked = app.pkg in config.locked,
+                    onToggleLock = {
+                        menuFor = null
+                        val pkg = app.pkg
+                        val toggle = {
+                            scope.launch {
+                                store.update {
+                                    it.copy(locked = if (pkg in it.locked) it.locked - pkg else it.locked + pkg)
+                                }
+                            }
+                        }
+                        if (config.pinHash.isEmpty()) {
+                            // first use: create the PIN
+                            pinPrompt = "Yeni PIN belirleyin" to { pin ->
+                                scope.launch { store.update { it.copy(pinHash = hashPin(pin)) } }
+                                toggle(); true
+                            }
+                        } else {
+                            pinPrompt = "PIN girin" to { pin ->
+                                (hashPin(pin) == config.pinHash).also { ok -> if (ok) toggle() }
+                            }
+                        }
+                    },
                     onAppInfo = { menuFor = null; Actions.openAppInfo(context, app.pkg) },
                     onClose = { menuFor = null; Actions.close(context, app.pkg) },
                     onUninstall = { menuFor = null; Actions.uninstall(context, app.pkg) },
+                )
+            }
+
+            pinPrompt?.let { (title, check) ->
+                PinDialog(
+                    title = title,
+                    onDismiss = { pinPrompt = null },
+                    onSubmit = { pin -> check(pin).also { if (it) pinPrompt = null } },
                 )
             }
 
@@ -906,7 +998,7 @@ fun LauncherApp(rescanTick: Int) {
     androidx.compose.animation.AnimatedVisibility(
         visible = !booted,
         enter = androidx.compose.animation.EnterTransition.None,
-        exit = androidx.compose.animation.fadeOut(tween(500)),
+        exit = androidx.compose.animation.ExitTransition.None,
         modifier = Modifier.fillMaxSize(),
     ) { LoadingScreen() }
     }

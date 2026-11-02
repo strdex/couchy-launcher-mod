@@ -22,20 +22,22 @@ data class CategoryCfg(
 @Serializable
 data class LauncherConfig(
     val categories: List<CategoryCfg> = listOf(
-        CategoryCfg("streaming", "Streaming"),
-        CategoryCfg("games", "Games"),
-        CategoryCfg("music", "Music"),
+        CategoryCfg("favorites", "Favorites"),
         CategoryCfg("apps", "Apps"),
     ),
     /** package -> section ids the user assigned (an app may be in several) */
     val sections: Map<String, Set<String>> = emptyMap(),
     /** category id -> explicit package order */
     val order: Map<String, List<String>> = emptyMap(),
-    val hidden: Set<String> = emptySet(),
+    val hidden: Set<String> = emptySet(), val locked: Set<String> = emptySet(), /** packages needing PIN; pinHash = SHA-256 of PIN ("" = unset) */ val pinHash: String = "",
     /** packages seen on the last scan — new installs are auto-added to the first section */
     val knownApps: Set<String> = emptySet(),
     val wallpaper: Int = 1, // Aurora
     val useCustomWallpaper: Boolean = false,
+    /** photos of the weather city, refreshed daily, rotated every 15 min */
+    val useCityWallpaper: Boolean = false,
+    val useBingWallpaper: Boolean = false,
+    val unsplashApiKey: String = "",
     /** video wallpaper: persisted content-URI of a local video, looped muted */
     val videoUri: String = "",
     val useVideoWallpaper: Boolean = false,
@@ -51,6 +53,10 @@ data class LauncherConfig(
     val setupDone: Boolean = false,
     // ----- status bar -----
     val showStatusBar: Boolean = true,
+    /** weather city chosen manually; empty = weather off */
+    val weatherCity: String = "",
+    val weatherLat: Double = 0.0,
+    val weatherLon: Double = 0.0,
     /** package of the app the VPN icon opens; empty = system VPN settings */
     val vpnApp: String = "",
     val showVpnButton: Boolean = true,
@@ -105,9 +111,7 @@ class ConfigStore(private val context: Context) {
     }
 
     private fun defaultCategories(ctx: Context) = listOf(
-        CategoryCfg("streaming", ctx.getString(R.string.cat_streaming)),
-        CategoryCfg("games", ctx.getString(R.string.cat_games)),
-        CategoryCfg("music", ctx.getString(R.string.cat_music)),
+        CategoryCfg("favorites", ctx.getString(R.string.cat_favorites)),
         CategoryCfg("apps", ctx.getString(R.string.cat_apps)),
     )
 
