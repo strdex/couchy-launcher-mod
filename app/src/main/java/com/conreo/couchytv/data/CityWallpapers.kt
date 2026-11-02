@@ -22,7 +22,7 @@ import java.util.Locale
  */
 object CityWallpapers {
 
-    private const val EMBEDDED_UNSPLASH_KEY = "cAOHVMsvAFU3q-SuuzyoAbkORyjuOFkl5JBhIYELobw"
+    private const val EMBEDDED_UNSPLASH_KEY = ""
     private const val COUNT = 6
     private const val UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) CouchyLauncher/1.0"
     private val json = Json { ignoreUnknownKeys = true }
