@@ -770,6 +770,7 @@ fun LauncherApp(rescanTick: Int) {
                         cityName = config.weatherCity,
                         showVpn = config.showVpnButton,
                         glass = config.statusBarGlass,
+                        onLiveTvClick = { Actions.openLiveTv(context) },
                         onVpnClick = {
                             if (config.vpnApp.isNotEmpty()) Actions.launchApp(context, config.vpnApp)
                             else Actions.openVpnSettings(context)

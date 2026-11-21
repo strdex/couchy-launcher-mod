@@ -1,5 +1,7 @@
 package com.conreo.couchytv.ui
 
+import android.content.Context
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +17,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +29,14 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -54,13 +65,48 @@ fun WeatherCityDialog(
     var results by remember { mutableStateOf<List<Weather.Place>?>(null) }
     var busy by remember { mutableStateOf(false) }
 
-    fun search() {
-        if (query.isBlank() || busy) return
-        busy = true
-        scope.launch { results = Weather.search(query); busy = false }
-    }
-
     Dialog(onDismissRequest = onDismiss) {
+        val keyboard = LocalSoftwareKeyboardController.current
+        val focusManager = LocalFocusManager.current
+        val view = LocalView.current
+        val inputFocus = remember { FocusRequester() }
+        val searchBtnFocus = remember { FocusRequester() }
+        val firstResultFocus = remember { FocusRequester() }
+
+        fun hideKeyboard() {
+            keyboard?.hide()
+            val imm = view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            imm?.hideSoftInputFromWindow(view.windowToken, 0)
+            focusManager.clearFocus(force = true)
+        }
+
+        DisposableEffect(Unit) {
+            onDispose {
+                keyboard?.hide()
+                val imm = view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                imm?.hideSoftInputFromWindow(view.windowToken, 0)
+            }
+        }
+
+        fun search() {
+            if (query.isBlank() || busy) return
+            hideKeyboard()
+            runCatching { searchBtnFocus.requestFocus() }
+            busy = true
+            scope.launch {
+                val found = Weather.search(query)
+                results = found
+                busy = false
+            }
+        }
+
+        LaunchedEffect(results) {
+            if (!results.isNullOrEmpty()) {
+                hideKeyboard()
+                runCatching { firstResultFocus.requestFocus() }
+            }
+        }
+
         Surface(
             shape = RoundedCornerShape(16.dp),
             colors = SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
@@ -70,7 +116,6 @@ fun WeatherCityDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text("Hava durumu şehri", style = MaterialTheme.typography.titleMedium)
-                val f = remember { FocusRequester() }
                 Box(
                     Modifier.fillMaxWidth()
                         .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
@@ -84,14 +129,29 @@ fun WeatherCityDialog(
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { search() }),
-                        modifier = Modifier.fillMaxWidth().focusRequester(f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(inputFocus)
+                            .onPreviewKeyEvent { ev ->
+                                if (ev.type == KeyEventType.KeyDown && ev.key == Key.DirectionDown) {
+                                    hideKeyboard()
+                                    runCatching { searchBtnFocus.requestFocus() }
+                                    true
+                                } else false
+                            },
                     )
                     if (query.isEmpty()) Text("Şehir adı yazın…", color = Color.White.copy(alpha = 0.4f))
                 }
-                LaunchedEffect(Unit) { runCatching { f.requestFocus() } }
+                LaunchedEffect(Unit) { runCatching { inputFocus.requestFocus() } }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(onClick = { search() }) { Text(if (busy) "Aranıyor…" else "Ara") }
-                    Button(onClick = { onPick(null) }) { Text("Kapat") }
+                    Button(
+                        onClick = { search() },
+                        modifier = Modifier.focusRequester(searchBtnFocus),
+                    ) { Text(if (busy) "Aranıyor…" else "Ara") }
+                    Button(onClick = {
+                        hideKeyboard()
+                        onPick(null)
+                    }) { Text("Kapat") }
                 }
                 val list = results
                 when {
@@ -102,8 +162,12 @@ fun WeatherCityDialog(
                             val p = list[i]
                             ListItem(
                                 selected = false,
-                                onClick = { onPick(p) },
+                                onClick = {
+                                    hideKeyboard()
+                                    onPick(p)
+                                },
                                 headlineContent = { Text(p.label) },
+                                modifier = if (i == 0) Modifier.focusRequester(firstResultFocus) else Modifier,
                             )
                         }
                     }

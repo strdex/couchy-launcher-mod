@@ -35,6 +35,7 @@ fun StatusBar(
     cityName: String = "",
     showVpn: Boolean,
     glass: Boolean,
+    onLiveTvClick: () -> Unit,
     onVpnClick: () -> Unit,
     onNetworkClick: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -85,12 +86,17 @@ fun StatusBar(
             Spacer(Modifier.width(1.dp))
         }
 
-        // ----- Sag Kose: VPN, Ag, Ayarlar, Tarih, Saat -----
+        // ----- Sag Kose: DTV, VPN, Ag, Ayarlar, Tarih, Saat -----
         Row(
             modifier = cluster,
             horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            StatusPill(
+                icon = AppIcons.Tv,
+                label = stringResource(R.string.cd_live_tv),
+                onClick = onLiveTvClick,
+            )
             if (showVpn) {
                 StatusIcon(
                     icon = AppIcons.Vpn,
@@ -129,6 +135,43 @@ fun StatusBar(
                 style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
                 color = Color.White,
                 modifier = Modifier.padding(start = 10.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusPill(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(CircleShape),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.White.copy(alpha = 0.12f),
+            focusedContainerColor = Color.White.copy(alpha = 0.28f),
+            contentColor = Color.White,
+            focusedContentColor = Color.White,
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.12f),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = Color.White.copy(alpha = 0.95f),
+                modifier = Modifier.size(20.dp),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.White.copy(alpha = 0.95f),
             )
         }
     }

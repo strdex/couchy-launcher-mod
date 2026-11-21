@@ -27,12 +27,10 @@ class HomeOverrideService : AccessibilityService() {
         runCatching {
             val pm = packageManager
             val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-            val leanbackIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
 
-            val detectedFromPm = (pm.queryIntentActivities(homeIntent, 0) +
-                    pm.queryIntentActivities(leanbackIntent, 0))
+            val detectedFromPm = pm.queryIntentActivities(homeIntent, 0)
                 .mapNotNull { it.activityInfo?.packageName }
-                .filter { it != packageName }
+                .filter { it != packageName && it != "com.conreo.couchybridge" }
                 .toSet()
 
             stockLaunchers = detectedFromPm + KNOWN_STOCK_LAUNCHERS
@@ -53,15 +51,16 @@ class HomeOverrideService : AccessibilityService() {
     }
 
     private fun isStockLauncher(pkg: String): Boolean {
-        if (pkg == packageName) return false
-        if (stockLaunchers.contains(pkg)) return true
+        if (pkg == packageName || pkg == "com.conreo.couchybridge") return false
 
-        // Ignore system dialogs, settings, input methods, and keyboards
+        // Ignore system dialogs, Live TV / DTV, input sources, settings, and keyboards
         if (SYSTEM_IGNORE_PACKAGES.any { pkg.startsWith(it) }) return false
+
+        if (stockLaunchers.contains(pkg)) return true
 
         val lower = pkg.lowercase()
         return lower.contains("launcher") ||
-                lower.contains("cvte") ||
+                lower.startsWith("com.cvte.tv.launcher") ||
                 lower.contains("wisdom") ||
                 lower.contains("cloudtv") ||
                 lower.contains("tvhome") ||
@@ -72,8 +71,7 @@ class HomeOverrideService : AccessibilityService() {
         val keyCode = event.keyCode
         if (keyCode == KeyEvent.KEYCODE_HOME ||
             keyCode == KeyEvent.KEYCODE_ALL_APPS ||
-            keyCode == KeyEvent.KEYCODE_TV_INPUT ||
-            keyCode == 170 || keyCode == 220 // Common vendor home/smart keycodes
+            keyCode == 220 // Common vendor home/smart keycode
         ) {
             if (event.action == KeyEvent.ACTION_UP) {
                 launchCouchyHome()
@@ -132,6 +130,13 @@ class HomeOverrideService : AccessibilityService() {
             "com.android.systemui",
             "com.android.settings",
             "com.android.tv.settings",
+            "com.cvte.tv.setting",
+            "com.cvte.tv.globalui",
+            "com.cvte.settings",
+            "com.cvte.tv.media",
+            "com.cvte.tv.steward",
+            "com.cvte.tv.tools",
+            "com.mediatek.tvinput",
             "com.google.android.inputmethod",
             "com.android.inputmethod",
             "com.google.android.katniss",

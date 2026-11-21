@@ -20,6 +20,14 @@ class CouchyBridgeService : AccessibilityService() {
         updateStockLaunchers()
         instance = this
         Log.i(TAG, "CouchyBridgeService connected and listening.")
+        // On boot, the stock launcher may already be open before the service connects.
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            val activePkg = rootInActiveWindow?.packageName?.toString()
+            if (activePkg == null || isStockLauncher(activePkg)) {
+                Log.i(TAG, "Stock launcher active on connect ($activePkg), launching Couchy TV...")
+                launchCouchyHome()
+            }
+        }, 1200)
     }
 
     override fun onDestroy() {
@@ -31,10 +39,8 @@ class CouchyBridgeService : AccessibilityService() {
         runCatching {
             val pm = packageManager
             val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-            val leanbackIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
 
-            val detected = (pm.queryIntentActivities(homeIntent, 0) +
-                    pm.queryIntentActivities(leanbackIntent, 0))
+            val detected = pm.queryIntentActivities(homeIntent, 0)
                 .mapNotNull { it.activityInfo?.packageName }
                 .filter { it != TARGET_PACKAGE && it != packageName }
                 .toSet()
@@ -63,13 +69,14 @@ class CouchyBridgeService : AccessibilityService() {
 
     private fun isStockLauncher(pkg: String): Boolean {
         if (pkg == packageName || pkg == TARGET_PACKAGE) return false
-        if (stockLaunchers.contains(pkg)) return true
 
         if (SYSTEM_IGNORE_PACKAGES.any { pkg.startsWith(it) }) return false
 
+        if (stockLaunchers.contains(pkg)) return true
+
         val lower = pkg.lowercase()
         return lower.contains("launcher") ||
-                lower.contains("cvte") ||
+                lower.startsWith("com.cvte.tv.launcher") ||
                 lower.contains("wisdom") ||
                 lower.contains("cloudtv") ||
                 lower.contains("tvhome") ||
@@ -80,8 +87,7 @@ class CouchyBridgeService : AccessibilityService() {
         val keyCode = event.keyCode
         if (keyCode == KeyEvent.KEYCODE_HOME ||
             keyCode == KeyEvent.KEYCODE_ALL_APPS ||
-            keyCode == KeyEvent.KEYCODE_TV_INPUT ||
-            keyCode == 170 || keyCode == 220
+            keyCode == 220
         ) {
             if (event.action == KeyEvent.ACTION_UP) {
                 Log.i(TAG, "Key $keyCode intercepted! Launching Couchy TV...")
@@ -160,6 +166,13 @@ class CouchyBridgeService : AccessibilityService() {
             "com.android.systemui",
             "com.android.settings",
             "com.android.tv.settings",
+            "com.cvte.tv.setting",
+            "com.cvte.tv.globalui",
+            "com.cvte.settings",
+            "com.cvte.tv.media",
+            "com.cvte.tv.steward",
+            "com.cvte.tv.tools",
+            "com.mediatek.tvinput",
             "com.google.android.inputmethod",
             "com.android.inputmethod",
             "com.google.android.katniss",

@@ -59,6 +59,29 @@ object Actions {
             .onFailure { openSystemSettings(context) }
     }
 
+    /** Opens Live TV / DTV on CVTE/Dijitsu/Wisdom Share TVs, falling back to input source or standard TV. */
+    fun openLiveTv(context: Context) {
+        val attempts = listOf(
+            // 1. CVTE / Dijitsu LiveTvGlobal
+            Intent(Intent.ACTION_MAIN).apply {
+                setClassName("com.cvte.tv.setting", "com.cvte.tv.setting.TvSettingActivity")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            },
+            // 2. CVTE Input Source switcher (DTV / ATV / HDMI)
+            Intent(Intent.ACTION_VIEW, Uri.parse("alliance://start_signal")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            },
+            // 3. Standard Android TV Live Channels
+            Intent(Intent.ACTION_VIEW, Uri.parse("content://android.media.tv/channel")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            },
+        )
+        for (intent in attempts) {
+            if (runCatching { context.startActivity(intent) }.isSuccess) return
+        }
+        toast(context, context.getString(R.string.toast_cannot_open))
+    }
+
     /** AerialViews screensaver (github.com/theothernt/AerialViews) */
     const val AERIAL_PKG = "com.neilturner.aerialviews"
 

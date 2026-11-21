@@ -23,6 +23,7 @@ private fun icon(name: String, d: String): ImageVector =
     ).build()
 
 object AppIcons {
+    val Tv by lazy { icon("Tv", "M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z") }
     val Play by lazy { icon("Play", "M8 5v14l11-7z") }
     val Bolt by lazy {
         icon("Bolt", "M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z")

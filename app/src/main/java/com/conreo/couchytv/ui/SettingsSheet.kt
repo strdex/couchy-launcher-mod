@@ -50,7 +50,13 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import android.content.Context
+import android.view.inputmethod.InputMethodManager
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
@@ -1248,6 +1254,23 @@ private fun RenameDialog(
 ) {
     var name by remember { mutableStateOf(initial) }
     Dialog(onDismissRequest = onDismiss) {
+        val keyboard = LocalSoftwareKeyboardController.current
+        val focusManager = LocalFocusManager.current
+        val view = LocalView.current
+        val saveBtnFocus = remember { FocusRequester() }
+        fun hideKb() {
+            keyboard?.hide()
+            val imm = view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            imm?.hideSoftInputFromWindow(view.windowToken, 0)
+            focusManager.clearFocus(force = true)
+        }
+        DisposableEffect(Unit) {
+            onDispose {
+                keyboard?.hide()
+                val imm = view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                imm?.hideSoftInputFromWindow(view.windowToken, 0)
+            }
+        }
         Surface(
             shape = RoundedCornerShape(16.dp),
             colors = SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
@@ -1269,14 +1292,26 @@ private fun RenameDialog(
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(
-                            onDone = { if (name.isNotBlank()) onSave(name.trim()) }
+                            onDone = { hideKb(); if (name.isNotBlank()) onSave(name.trim()) }
                         ),
-                        modifier = Modifier.fillMaxWidth().focusRequester(f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(f)
+                            .onPreviewKeyEvent { ev ->
+                                if (ev.type == KeyEventType.KeyDown && ev.key == Key.DirectionDown) {
+                                    hideKb()
+                                    runCatching { saveBtnFocus.requestFocus() }
+                                    true
+                                } else false
+                            },
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(onClick = { if (name.isNotBlank()) onSave(name.trim()) }) { Text(stringResource(R.string.save)) }
-                    Button(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+                    Button(
+                        onClick = { hideKb(); if (name.isNotBlank()) onSave(name.trim()) },
+                        modifier = Modifier.focusRequester(saveBtnFocus),
+                    ) { Text(stringResource(R.string.save)) }
+                    Button(onClick = { hideKb(); onDismiss() }) { Text(stringResource(R.string.cancel)) }
                 }
             }
         }
