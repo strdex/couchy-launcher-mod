@@ -1,5 +1,8 @@
 package com.conreo.couchytv.ui
 
+import androidx.compose.ui.res.stringResource
+import com.conreo.couchytv.R
+
 import android.graphics.BitmapFactory
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -351,6 +354,7 @@ fun LauncherApp(rescanTick: Int) {
 
     var menuFor by remember { mutableStateOf<AppEntry?>(null) }
     var movePkg by remember { mutableStateOf<String?>(null) }
+    var editMode by remember { mutableStateOf(false) }
     // PIN lock: pending action waiting for the correct PIN
     var pinPrompt by remember { mutableStateOf<Pair<String, (String) -> Boolean>?>(null) }
     val requestLaunch: (String) -> Unit = { pkg ->
@@ -646,7 +650,16 @@ fun LauncherApp(rescanTick: Int) {
                         showSettings = true
                         return@onPreviewKeyEvent true
                     }
-                    if (movePkg == null) return@onPreviewKeyEvent false
+                    if (movePkg == null) {
+                        if (editMode && menuFor == null && !showSettings &&
+                            event.type == KeyEventType.KeyUp &&
+                            (event.key == Key.Back || event.key == Key.Escape)
+                        ) {
+                            editMode = false
+                            return@onPreviewKeyEvent true
+                        }
+                        return@onPreviewKeyEvent false
+                    }
                     // Move mode owns EVERY key event. Ending it must happen on
                     // the KEY-UP: ending on key-down let the release fall
                     // through to the card underneath as a click → app launch.
@@ -770,7 +783,9 @@ fun LauncherApp(rescanTick: Int) {
                         cityName = config.weatherCity,
                         showVpn = config.showVpnButton,
                         glass = config.statusBarGlass,
+                        editMode = editMode,
                         onLiveTvClick = { Actions.openLiveTv(context) },
+                        onEditToggle = { editMode = !editMode },
                         onVpnClick = {
                             if (config.vpnApp.isNotEmpty()) Actions.launchApp(context, config.vpnApp)
                             else Actions.openVpnSettings(context)
@@ -778,6 +793,23 @@ fun LauncherApp(rescanTick: Int) {
                         onNetworkClick = { Actions.openNetworkSettings(context) },
                         onSettingsClick = { showSettings = true },
                     )
+                }
+                if (editMode) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.edit_mode_banner),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White,
+                            modifier = Modifier
+                                .background(accent.copy(alpha = 0.85f), RoundedCornerShape(999.dp))
+                                .padding(horizontal = 16.dp, vertical = 6.dp),
+                        )
+                    }
                 }
                 when (config.layout) {
                     LAYOUT_DOCK -> DockArea(
@@ -792,7 +824,11 @@ fun LauncherApp(rescanTick: Int) {
                         intro = introShown,
                         expanded = dockExpanded,
                         onExpandChange = { dockExpanded = it },
-                        onLaunch = { app -> if (movePkg == null) requestLaunch(app.pkg) },
+                        onLaunch = { app ->
+                            if (movePkg == null) {
+                                if (editMode) menuFor = app else requestLaunch(app.pkg)
+                            }
+                        },
                         onMenu = { app -> if (movePkg == null) menuFor = app },
                     )
                     else -> {
@@ -896,14 +932,22 @@ fun LauncherApp(rescanTick: Int) {
                                     GridSection(
                                         catApps, config, accent, movePkg, moveFocus,
                                         cardWidth, gap, introShown,
-                                        onLaunch = { app -> if (movePkg == null) requestLaunch(app.pkg) },
+                                        onLaunch = { app ->
+                            if (movePkg == null) {
+                                if (editMode) menuFor = app else requestLaunch(app.pkg)
+                            }
+                        },
                                         onMenu = { app -> if (movePkg == null) menuFor = app },
                                     )
                                 } else {
                                     CarouselSection(
                                         catApps, config, accent, movePkg, moveFocus,
                                         cardWidth, gap,
-                                        onLaunch = { app -> if (movePkg == null) requestLaunch(app.pkg) },
+                                        onLaunch = { app ->
+                            if (movePkg == null) {
+                                if (editMode) menuFor = app else requestLaunch(app.pkg)
+                            }
+                        },
                                         onMenu = { app -> if (movePkg == null) menuFor = app },
                                     )
                                 }

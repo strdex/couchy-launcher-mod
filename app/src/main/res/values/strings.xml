@@ -26,6 +26,9 @@
 
     <!-- Status bar -->
     <string name="cd_live_tv">DTV</string>
+    <string name="cd_edit">Edit</string>
+    <string name="cd_edit_done">Done</string>
+    <string name="edit_mode_banner">Edit mode · Press OK on an app · Back to exit</string>
     <string name="cd_vpn">VPN</string>
     <string name="cd_network">Network</string>
     <string name="cd_settings">Settings</string>

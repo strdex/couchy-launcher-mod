@@ -78,6 +78,18 @@ fun AppCard(
         onLongClick = { fireLongPress() }, // pointer / mouse path
         modifier = modifier
             .onPreviewKeyEvent { e ->
+                if (e.type == KeyEventType.KeyDown && (
+                        e.key == Key.Info ||
+                        e.key == Key.Guide ||
+                        e.key == Key.ProgramRed ||
+                        e.key == Key.ProgramGreen ||
+                        e.key == Key.ProgramYellow ||
+                        e.key == Key.ProgramBlue
+                    )
+                ) {
+                    fireLongPress()
+                    return@onPreviewKeyEvent true
+                }
                 val select = e.key == Key.DirectionCenter || e.key == Key.Enter ||
                     e.key == Key.NumPadEnter
                 if (!select || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false

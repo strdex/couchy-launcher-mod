@@ -35,7 +35,9 @@ fun StatusBar(
     cityName: String = "",
     showVpn: Boolean,
     glass: Boolean,
+    editMode: Boolean = false,
     onLiveTvClick: () -> Unit,
+    onEditToggle: () -> Unit,
     onVpnClick: () -> Unit,
     onNetworkClick: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -97,6 +99,12 @@ fun StatusBar(
                 label = stringResource(R.string.cd_live_tv),
                 onClick = onLiveTvClick,
             )
+            StatusPill(
+                icon = if (editMode) AppIcons.Check else AppIcons.Pencil,
+                label = stringResource(if (editMode) R.string.cd_edit_done else R.string.cd_edit),
+                highlighted = editMode,
+                onClick = onEditToggle,
+            )
             if (showVpn) {
                 StatusIcon(
                     icon = AppIcons.Vpn,
@@ -144,14 +152,16 @@ fun StatusBar(
 private fun StatusPill(
     icon: ImageVector,
     label: String,
+    highlighted: Boolean = false,
     onClick: () -> Unit,
 ) {
+    val accent = MaterialTheme.colorScheme.primary
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(CircleShape),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.White.copy(alpha = 0.12f),
-            focusedContainerColor = Color.White.copy(alpha = 0.28f),
+            containerColor = if (highlighted) accent.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.12f),
+            focusedContainerColor = if (highlighted) accent else Color.White.copy(alpha = 0.28f),
             contentColor = Color.White,
             focusedContentColor = Color.White,
         ),

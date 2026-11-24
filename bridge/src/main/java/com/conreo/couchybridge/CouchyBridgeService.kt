@@ -118,8 +118,24 @@ class CouchyBridgeService : AccessibilityService() {
 
         try {
             startActivity(intent)
+            // After CouchyLauncher is in foreground, reclaim RAM from cached stock launchers
+            // without disabling them (avoids CVTE/Wisdom Share bootloop).
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                reclaimStockLauncherRam()
+            }, 2500)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to launch $TARGET_PACKAGE", e)
+        }
+    }
+
+    private fun reclaimStockLauncherRam() {
+        runCatching {
+            val am = getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager ?: return
+            for (pkg in stockLaunchers) {
+                if (pkg != packageName && pkg != TARGET_PACKAGE) {
+                    am.killBackgroundProcesses(pkg)
+                }
+            }
         }
     }
 
